@@ -1,0 +1,82 @@
+---
+title: "flores markdown 2"
+author: "karen"
+date: "7/13/2020"
+output:
+  ioslides_presentation: default
+  beamer_presentation: default
+  slidy_presentation: default
+---
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(sqldf)
+library(rmarkdown)
+```
+```{r}
+radio_censal <- st_read("http://cdn.buenosaires.gob.ar/datosabiertos/datasets/informacion-censal-por-radio/caba_radios_censales.geojson")
+establecimientos_educativos <- st_read("http://cdn.buenosaires.gob.ar/datosabiertos/datasets/establecimientos-educativos/establecimientos-educativos.geojson")
+
+```
+```{r}
+ggplot(radio_censal) +
+  geom_sf(mapping = aes(fill = HOGARES_NBI/POBLACION) )
+```
+```{r}
+radio_censal <- st_transform(radio_censal, 4326) #reproyectamos
+pal_fun <- colorQuantile("YlOrRd", NULL, n = 5)
+p_popup <- paste0("<strong>Densidad de NBI: </strong>", radio_censal$HOGARES_NBI)
+
+radio_censal <- radio_censal %>%
+  filter(BARRIO == "FLORES")
+establecimientos_educativos <- establecimientos_educativos %>%
+  filter(BARRIO == "FLORES")
+```
+
+
+```{r}
+leaflet(radio_censal) %>%
+  addPolygons(
+    stroke = FALSE, 
+    fillColor = ~pal_fun(HOGARES_NBI),
+    fillOpacity = 0.8, smoothFactor = 0.5,
+    popup = p_popup) %>%
+  addTiles()
+```
+
+```{r}
+establecimientos_educativos %>% filter(str_detect(nivel,"^Secundario+.*"))
+
+establecimientos_educativos <- establecimientos_educativos %>%
+  filter( (DEPFUN != "Dir Gral de Educación de Gestión Privada") & str_detect(nivel,"^Secundario Común+.*") )
+establecimientos_educativos
+
+
+radio_censal <- st_transform(radio_censal, 4326) 
+
+pal_fun <- colorQuantile("YlOrRd", NULL, n = 5)
+p_popup_sv <- paste0("<strong>Densidad de NBI: </strong>", (radio_censal$HOGARES_NBI/radio_censal$POBLACION))
+p_popup_ee <- paste0("<strong>Nombre: </strong>", establecimientos_educativos$NOMBRE_EST, 
+                     " <strong>Modalidad: </strong>", establecimientos_educativos$NIVMOD)
+
+SchoolIcon <- makeIcon(
+  iconUrl = "https://icon-icons.com/downloadimage.php?id=82486&root=1194/PNG/512/&file=1490886282-18-school-building_82486.png",
+  iconWidth = 25, iconHeight = 25)
+
+```
+
+```{r}
+leaflet(data = radio_censal) %>% 
+  addTiles() %>%
+  addPolygons(
+    stroke = FALSE, 
+    fillColor = ~pal_fun(HOGARES_NBI),
+    fillOpacity = 0.3, smoothFactor = 0.5,
+    popup = p_popup_sv) %>%
+  addMarkers(data = establecimientos_educativos, 
+             icon = SchoolIcon, 
+             popup = p_popup_ee)
+```
+
